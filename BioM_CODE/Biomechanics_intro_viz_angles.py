@@ -20,7 +20,7 @@ it's ideal to print the markers to know what you're working with if the data
 was not collected by you.
 '''
 
-filename = "000072_002996_76_229_007_FF_863.c3d"
+filename = "ADD_file.c3d"
 markers = ktk.read_c3d(filename)["Points"]
 
 
