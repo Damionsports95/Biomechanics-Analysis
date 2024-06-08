@@ -20,7 +20,7 @@ it's ideal to print the markers to know what you're working with if the data
 was not collected by you.
 '''
 
-filename = "ADD_file.c3d"
+filename = "ADD_File.c3d"
 markers = ktk.read_c3d(filename)["Points"]
 
 
@@ -185,6 +185,8 @@ interconnections["Head"] = {
 }
 
 
+
+# Create the Player instance
 p = ktk.Player(
     markers,
     interconnections=interconnections,
@@ -192,13 +194,17 @@ p = ktk.Player(
     anterior="-y",
     target=(0, 0.5, 1),
     azimuth=0.1,
-    zoom=1.5, 
+    zoom=1.5,
 )
 
+# Customize the player appearance
 p.point_size = 8
 p.default_point_color = 'r'
-
 p.interconnection_width = 3.5
+
+# Save the video
+output_filename = "BioM_viz_interC.mp4"
+p.to_video(output_filename, fps=30, downsample=1, show_progress_bar=True)
 
 
 #%% Arm Coodrinate system Step A
@@ -505,3 +511,48 @@ angles_df = pd.DataFrame({
 })
 
 angles_df.to_csv("joint_angles_3.csv", index=False) #to save data
+
+
+#%% Detect Lead Knee Maximum Peak Height
+lead_knee_marker = markers.data["LKNE"]  # Change to "RKNE" if the lead leg is the right leg
+knee_z_position = lead_knee_marker[:, 2]  # Assuming z-axis is vertical
+
+max_peak_height_index = np.argmax(knee_z_position)
+max_peak_height_time = markers.time[max_peak_height_index]
+print(f"Lead Knee Maximum Peak Height Time: {max_peak_height_time} seconds")
+
+#%% Detect Footstrike
+lead_ankle_marker = markers.data["LANK"]  # Change to "RANK" if the lead leg is the right leg
+lead_toe_marker = markers.data["LTOE"]  # Change to "RTOE" if the lead leg is the right leg
+
+# Footstrike: will detect when ankle or toe thouch the ground
+footstrike_threshold = 0.05  
+
+footstrike_indices = np.where(lead_ankle_marker[:, 2] < footstrike_threshold)[0]
+if footstrike_indices.size > 0:
+    footstrike_time = markers.time[footstrike_indices[0]]
+    print(f"Footstrike Time: {footstrike_time} seconds")
+else:
+    print("Footstrike not detected")
+
+#%% Detect Ball Release
+wrist_marker = markers.data["RWRA"]  # Change to "LWRA" if it is a leftie
+# Assumes the ball release happens when the wrist reaches its max forward position
+
+release_index = np.argmax(-wrist_marker[:, 1])
+release_time = markers.time[release_index]
+print(f"Ball Release Time: {release_time} seconds")
+
+#%% Plot the events for visualization
+plt.figure(figsize=(12, 6))
+plt.plot(markers.time, knee_z_position, label="Lead Knee Height")
+plt.axvline(max_peak_height_time, color='r', linestyle='--', label="Peak Knee Height")
+if footstrike_indices.size > 0:
+    plt.axvline(footstrike_time, color='g', linestyle='--', label="Footstrike")
+plt.axvline(release_time, color='b', linestyle='--', label="Ball Release")
+plt.xlabel("Time (seconds)")
+plt.ylabel("Height (m)")
+plt.title("Knee Height Through Delivery")
+plt.legend()
+plt.grid(True)
+plt.show()
